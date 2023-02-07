@@ -58,7 +58,7 @@ stages:
       condition: succeededOrFailed()
       inputs:
         PathtoPublish: $(build.artifactstagingdirectory)
-        TargetPath: '\\my\share\$(Build.DefinitionName)\$(Build.BuildNumber)'
+
 
 - stage: deployToTest
   jobs:
@@ -83,8 +83,8 @@ stages:
                   WebAppName: $(webAppName)
                   deployToSlotOrASE: true
                   ResourceGroupName: $(resourceGroup)
-                  SlotName: "test"
-                  packageForLinux: "$(Agent.BuildDirectory)/drop/web.zip"
+                  SlotName: "dev"
+                  packageForLinux: "$(Agent.BuildDirectory)/drop/ThunderCats.Web.zip"
 
               
 - stage: deployToProd
@@ -104,4 +104,4 @@ stages:
                   azureSubscription: $(subscription)
                   appType: "webAppLinux"
                   WebAppName: $(webAppName)
-                  packageForLinux: "$(Agent.BuildDirectory)/drop/web.zip"
+                  packageForLinux: "$(Agent.BuildDirectory)/drop/ThunderCats.Web.zip"
