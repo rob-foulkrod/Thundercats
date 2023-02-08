@@ -5,11 +5,12 @@ trigger:
 
 variables: 
   azureSubscription: 'thundercats-sp'
-  appName: 'thundercatscontainer'
+  appName: 'thundercatscontainers'
   containerRegistry: 'thundercatsregistry'
   dockerRegistryServiceConnection: 'thundercats-docker-registry'
   imageRepository: 'thundercatsfe'
   dockerfilePath: '$(Build.SourcesDirectory)/ThunderCats.Web/Dockerfile'
+  dockerNamespace: 'thundercatsregistry.azurecr.io'
   tag: '$(Build.BuildId)'
   resourceGroupName: 'thundercats'
 
@@ -25,6 +26,9 @@ stages:
     pool:
       vmImage: $(vmImageName)
     steps:
+    - bash: tree
+      displayName: Where Am I
+      workingDirectory: $(Build.SourcesDirectory)
     - task: Docker@2
       displayName: Login to ACR
       inputs:
@@ -37,6 +41,7 @@ stages:
         repository: $(imageRepository)
         command: 'buildAndPush'
         Dockerfile: $(dockerfilePath)
+        buildContext: '$(Build.SourcesDirectory)/ThunderCats.Web/'
         tags: '$(tag)'
 
 - stage: deployToDevStage
@@ -51,23 +56,26 @@ stages:
 
           deploy:
             steps:
-              - bash: tree
-                displayName: Where Am I
-                workingDirectory: $(Agent.BuildDirectory)
+            - bash: tree
+              displayName: Where Am I
+              workingDirectory: $(Agent.BuildDirectory)
 
-              - task: AzureWebAppContainer@1
-                displayName: 'Azure Web App on Container Deploy'
-                inputs:
-                  azureSubscription: $(azureSubscription)
-                  appName: $(appName)
-                  imageName: $(containerRegistry)/$(imageRepository):$(tag)
-                  deployToSlotOrASE: true
-                  resourceGroupName: $(resourceGroupName)
-                  slotName: dev
+            - task: AzureRMWebAppDeployment@4
+              displayName: Deploy To Dev Slot
+              inputs:
+                appType: webAppContainer
+                ConnectedServiceName: $(azureSubscription)
+                WebAppName: $(appName)
+                DockerNamespace: $(dockerNamespace)
+                DockerRepository: $(imageRepository)
+                DockerImageTag: $(tag)
+                deployToSlotOrASE: true
+                SlotName: dev
+                ResourceGroupName: $(resourceGroupName)
 
               
 - stage: deployToProd
-  # condition: and(succeeded(), eq(variables.isMain, 'true'))
+  condition: and(succeeded(), eq(variables.isMain, 'true'))
   dependsOn: deployToDevStage
   jobs:
     - deployment: webDeployToProd
@@ -79,12 +87,15 @@ stages:
         runOnce:
           deploy:
             steps:
-              - task: AzureWebAppContainer@1
-                displayName: 'Azure Web App on Container Deploy'
-                inputs:
-                  azureSubscription: $(azureSubscription)
-                  appName: $(appName)
-                  imageName: $(containerRegistry)/$(imageRepository):$(tag)
-                  deployToSlotOrASE: true
-                  resourceGroupName: $(resourceGroupName)
-                  slotName: production
+            - task: AzureRMWebAppDeployment@4
+              displayName: Deploy To Dev Slot
+              inputs:
+                appType: webAppContainer
+                ConnectedServiceName: $(azureSubscription)
+                WebAppName: $(appName)
+                DockerNamespace: $(dockerNamespace)
+                DockerRepository: $(imageRepository)
+                DockerImageTag: $(tag)
+                deployToSlotOrASE: true
+                SlotName: production
+                ResourceGroupName: $(resourceGroupName)
